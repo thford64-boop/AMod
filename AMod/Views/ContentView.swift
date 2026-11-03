@@ -6,6 +6,8 @@ struct ContentView: View {
     @State private var search = ""
     @State private var homeScreenScript: Script?
     @State private var showDocs = false
+    @State private var showTemplates = false
+    @State private var showSettings = false
     @State private var deleting: Script?
 
     private let columns = [GridItem(.adaptive(minimum: 155), spacing: 12)]
@@ -43,7 +45,8 @@ struct ContentView: View {
             .navigationTitle("AMod")
             .searchable(text: $search, prompt: "Search scripts")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItemGroup(placement: .navigationBarLeading) {
+                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
                     Button { showDocs = true } label: { Image(systemName: "book") }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -51,6 +54,8 @@ struct ContentView: View {
                         Button { create(Examples.cliTemplate) } label: { Label("New CLI Script", systemImage: "terminal") }
                         Button { create(Examples.guiTemplate) } label: { Label("New GUI Script", systemImage: "rectangle.3.group") }
                         Button { create(Examples.blankTemplate) } label: { Label("Blank Script", systemImage: "doc") }
+                        Divider()
+                        Button { showTemplates = true } label: { Label("From Template…", systemImage: "square.grid.3x3.fill") }
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -63,6 +68,13 @@ struct ContentView: View {
                 AddToHomeView(script: script)
             }
             .sheet(isPresented: $showDocs) { DocsView() }
+            .sheet(isPresented: $showSettings) { AppSettingsView() }
+            .sheet(isPresented: $showTemplates) {
+                TemplatesView { script in
+                    store.upsert(script)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { router.editing = script }
+                }
+            }
             .fullScreenCover(item: $router.session) { session in
                 RunView(session: session)
             }
@@ -111,9 +123,7 @@ struct ScriptTile: View {
         let color = Color(hex: script.color)
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top) {
-                Image(systemName: script.icon)
-                    .font(.title2)
-                    .foregroundColor(.white)
+                ScriptGlyph(script: script, size: 26)
                 Spacer()
                 Button(action: onEdit) {
                     Image(systemName: "ellipsis.circle.fill")

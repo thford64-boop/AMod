@@ -67,11 +67,21 @@ struct ConsoleView: View {
                         Text("$ amod run \"\(session.script.name)\"")
                             .foregroundColor(.green)
                         ForEach(session.logs) { line in
-                            Text(line.text)
-                                .foregroundColor(line.color)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .textSelection(.enabled)
-                                .id(line.id)
+                            Group {
+                                if let image = line.image {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(maxHeight: 260)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                } else {
+                                    Text(line.text)
+                                        .foregroundColor(line.color)
+                                        .textSelection(.enabled)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .id(line.id)
                         }
                         if session.running && session.inlinePrompt == nil && session.prompt == nil && session.tree == nil {
                             Text("▍").foregroundColor(.green)

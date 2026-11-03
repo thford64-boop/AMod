@@ -1,0 +1,201 @@
+[
+  {
+    "id": "piano",
+    "name": "Piano",
+    "category": "Sound",
+    "icon": "pianokeys",
+    "color": "#5856D6",
+    "description": "A playable one-octave piano built from generated tones.",
+    "code": "// Tap keys to play notes. audio.note() generates the sound, no files needed.\nconst notes = [\"C4\", \"D4\", \"E4\", \"F4\", \"G4\", \"A4\", \"B4\", \"C5\"]\nconst s = state({ wave: \"sine\", last: \"\" })\n\nui.render(() =>\n  VStack({ spacing: 16 },\n    Text(s.last || \"Tap a key\").font(40, \"bold\", \"rounded\"),\n    Picker(\"Sound\", [\"sine\", \"square\", \"triangle\", \"saw\"], s.wave, v => s.wave = v).pickerStyle(\"segmented\"),\n    Grid({ columns: 4, spacing: 10 },\n      ForEach(notes, n =>\n        Button(Text(n).font(\"title2\", \"bold\").frame({ maxWidth: Infinity, height: 90 }), () => {\n          s.last = n\n          haptic(\"light\")\n          audio.note(n, 0.35, { wave: s.wave, wait: false })\n        }).background(\"white\").foregroundColor(\"black\").cornerRadius(12).shadow(2)\n      )\n    ),\n    Button(\"Play a tune 🎶\", () => audio.melody([[\"E4\",.2],[\"D4\",.2],[\"C4\",.2],[\"D4\",.2],[\"E4\",.2],[\"E4\",.2],[\"E4\",.4]], { wave: s.wave }))\n      .buttonStyle(\"borderedProminent\"),\n  ).padding()\n)",
+    "emoji": "🎹"
+  },
+  {
+    "id": "soundboard",
+    "name": "Soundboard",
+    "category": "Sound",
+    "icon": "speaker.wave.3.fill",
+    "color": "#FF9500",
+    "description": "Big buttons that play tones, system sounds, speech, and audio from URLs.",
+    "code": "const pads = [\n  { title: \"Beep\", color: \"#FF3B30\", play: () => audio.tone(880, 0.15) },\n  { title: \"Boop\", color: \"#FF9500\", play: () => audio.tone(220, 0.25, { wave: \"square\" }) },\n  { title: \"Laser\", color: \"#34C759\", play: () => { for (let f = 1500; f > 200; f -= 100) audio.tone(f, 0.02, { wave: \"saw\" }) } },\n  { title: \"Static\", color: \"#8E8E93\", play: () => audio.tone(0, 0.4, { wave: \"noise\", volume: 0.3 }) },\n  { title: \"Ding\", color: \"#007AFF\", play: () => playSound(1013) },\n  { title: \"Tock\", color: \"#5856D6\", play: () => playSound(1104) },\n  { title: \"Hello\", color: \"#AF52DE\", play: () => speak(\"Hello!\") },\n  { title: \"URL clip\", color: \"#FF2D55\", play: () => audio.play(\"https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav\", { wait: false }) },\n]\n\nui.render(() =>\n  ScrollView(\n    Grid({ columns: 2, spacing: 12 },\n      ForEach(pads, p =>\n        Button(Text(p.title).font(\"title3\", \"bold\").foregroundColor(\"white\").frame({ maxWidth: Infinity, height: 110 }),\n          () => { haptic(\"medium\"); p.play() })\n          .background(p.color).cornerRadius(20)\n      )\n    ).padding(),\n    Button(\"Stop audio\", () => audio.stop()).buttonStyle(\"bordered\"),\n  )\n)",
+    "emoji": "🔊"
+  },
+  {
+    "id": "base64-audio",
+    "name": "Base64 Audio Player",
+    "category": "Sound",
+    "icon": "waveform",
+    "color": "#30B0C7",
+    "description": "Plays audio stored as base64 text, and shows how to make and save it.",
+    "code": "// Paste base64 audio (mp3/m4a/wav) from the AMod online tools, or a data: URL.\n// Here we generate a tone as base64 so the example works offline.\nconst clip = audio.toneBase64(\"A4\", 0.5, \"triangle\")\nprint(\"Base64 length:\", clip.length)\n\naudio.playBase64(clip, { wait: true })\n\n// Save it to a file and play it from there\nfiles.writeBase64(\"tone.wav\", clip)\naudio.play(\"tone.wav\", { wait: true, rate: 1.5 })\n\n// Ask for your own\nconst mine = input(\"Paste base64 audio (or leave empty)\")\nif (mine) audio.playBase64(mine, { wait: true })",
+    "emoji": "🎧"
+  },
+  {
+    "id": "metronome",
+    "name": "Metronome",
+    "category": "Sound",
+    "icon": "metronome.fill",
+    "color": "#34C759",
+    "description": "Adjustable-tempo metronome with an accent on beat one.",
+    "code": "const s = state({ bpm: 100, running: false, beat: 0 })\nlet timer = null\n\nconst start = () => {\n  clearInterval(timer)\n  timer = setInterval(() => {\n    s.beat = (s.beat % 4) + 1\n    audio.tone(s.beat === 1 ? 1500 : 1000, 0.05, { wait: false })\n    haptic(s.beat === 1 ? \"heavy\" : \"light\")\n  }, 60000 / s.bpm)\n}\n\nui.render(() =>\n  VStack({ spacing: 24 },\n    Text(`${Math.round(s.bpm)} BPM`).font(54, \"bold\", \"rounded\"),\n    HStack({ spacing: 14 }, ForEach([1, 2, 3, 4], b => Circle().fill(s.running && s.beat === b ? \"green\" : \"gray\").frame({ width: 28, height: 28 }))),\n    Slider(s.bpm, v => { s.bpm = v; if (s.running) start() }, { min: 40, max: 220, step: 1 }),\n    Button(s.running ? \"Stop\" : \"Start\", () => {\n      s.running = !s.running\n      s.running ? start() : clearInterval(timer)\n    }).buttonStyle(\"borderedProminent\").controlSize(\"large\"),\n  ).padding(24)\n)",
+    "emoji": "🥁"
+  },
+  {
+    "id": "base64-image",
+    "name": "Base64 Image Viewer",
+    "category": "Images",
+    "icon": "photo.fill",
+    "color": "#FF2D55",
+    "description": "Shows base64 images in a GUI and in the console, and saves them to Files.",
+    "code": "// A tiny 1×1 red PNG as base64. Replace it with your own from the AMod online tools.\nconst red = \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==\"\n\n// In the console\nshowImage(\"data:image/png;base64,\" + red)\n\n// Download any image as base64\nconst cat = base64.fromURL(\"https://placekitten.com/400/300\")\nfiles.writeBase64(\"cat.jpg\", cat)\n\nconst s = state({ pasted: \"\" })\nui.render(() =>\n  ScrollView({ spacing: 16 },\n    Text(\"From base64\").font(\"headline\"),\n    Image({ base64: red }).frame({ width: 80, height: 80 }).cornerRadius(12),\n    Text(\"Downloaded and saved as cat.jpg\").font(\"headline\"),\n    Image({ file: \"cat.jpg\" }).frame({ height: 200 }).cornerRadius(16),\n    TextField(\"Paste base64 image…\", s.pasted, v => s.pasted = v).textFieldStyle(\"roundedBorder\"),\n    s.pasted && Image({ base64: s.pasted }).frame({ height: 220 }).cornerRadius(16),\n  ).padding()\n)",
+    "emoji": "🖼️"
+  },
+  {
+    "id": "qr-code",
+    "name": "QR Code Maker",
+    "category": "Online Tools",
+    "icon": "qrcode",
+    "color": "#000000",
+    "description": "Makes a QR code with a free online API and saves it.",
+    "code": "const s = state({ text: clipboard.get() || \"https://github.com\" })\nconst qr = () => `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(s.text)}`\n\nui.render(() =>\n  VStack({ spacing: 18 },\n    TextField(\"Text or link\", s.text, v => s.text = v).textFieldStyle(\"roundedBorder\"),\n    Image({ url: qr() }).frame({ width: 260, height: 260 }).background(\"white\").cornerRadius(16),\n    HStack({ spacing: 12 },\n      Button(Label(\"Save\", \"square.and.arrow.down\"), () => {\n        files.writeBase64(\"qr.png\", base64.fromURL(qr()))\n        haptic(\"success\")\n        notify(\"Saved\", \"qr.png is in Files → AMod\")\n      }).buttonStyle(\"borderedProminent\"),\n      Button(Label(\"Share link\", \"square.and.arrow.up\"), () => share(qr())).buttonStyle(\"bordered\"),\n    ),\n    Spacer(),\n  ).padding()\n)"
+  },
+  {
+    "id": "weather-chart",
+    "name": "Weather Dashboard",
+    "category": "Online Tools",
+    "icon": "cloud.sun.fill",
+    "color": "#007AFF",
+    "description": "7-day forecast chart from Open-Meteo using your location.",
+    "code": "const loc = location() || { latitude: 51.5, longitude: -0.12 }\nconst url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}` +\n  `&daily=temperature_2m_max,temperature_2m_min&current=temperature_2m,wind_speed_10m&timezone=auto`\nconst w = fetchJSON(url)\nconst days = w.daily.time.map((d, i) => ({ day: d.slice(5), high: w.daily.temperature_2m_max[i], low: w.daily.temperature_2m_min[i] }))\nconst points = days.flatMap(d => [{ x: d.day, y: d.high, series: \"High\" }, { x: d.day, y: d.low, series: \"Low\" }])\n\nui.render(() =>\n  ScrollView({ spacing: 16 },\n    Card(\n      Text(\"Now\").font(\"caption\").foregroundColor(\"secondary\"),\n      Text(`${w.current.temperature_2m}°`).font(60, \"bold\", \"rounded\"),\n      Label(`${w.current.wind_speed_10m} km/h wind`, \"wind\"),\n    ),\n    Card(Text(\"This week\").font(\"headline\"), Chart(points, { type: \"line\" })),\n    Map({ latitude: loc.latitude, longitude: loc.longitude, span: 0.2, pins: [{ ...loc, title: \"You\" }] }).cornerRadius(16),\n  ).padding()\n)",
+    "emoji": "🌤️"
+  },
+  {
+    "id": "crypto",
+    "name": "Crypto Prices",
+    "category": "Online Tools",
+    "icon": "bitcoinsign.circle.fill",
+    "color": "#FF9500",
+    "description": "Live prices and a 7-day chart from CoinGecko.",
+    "code": "const coins = [\"bitcoin\", \"ethereum\", \"solana\", \"dogecoin\"]\nconst s = state({ coin: \"bitcoin\", data: null })\n\nconst load = () => {\n  const p = fetchJSON(`https://api.coingecko.com/api/v3/coins/${s.coin}/market_chart?vs_currency=usd&days=7&interval=daily`)\n  s.data = p.prices.map(([t, v]) => ({ x: new Date(t).toLocaleDateString(undefined, { weekday: \"short\" }), y: v }))\n}\nload()\n\nui.render(() =>\n  List(\n    Section(\"Coin\",\n      Picker(\"Coin\", coins, s.coin, v => { s.coin = v; load() }).pickerStyle(\"segmented\"),\n    ),\n    Section(\"Price\",\n      Text(s.data ? `$${s.data[s.data.length - 1].y.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : \"…\").font(40, \"bold\", \"rounded\"),\n      s.data && Chart(s.data, { type: \"area\" }),\n    ),\n  ).refreshable(load)\n)",
+    "emoji": "🪙"
+  },
+  {
+    "id": "dictionary",
+    "name": "Dictionary",
+    "category": "Online Tools",
+    "icon": "book.fill",
+    "color": "#A2845E",
+    "description": "Looks up words with a free dictionary API and reads them aloud.",
+    "code": "const word = input(\"Word to look up\", clipboard.get() || \"serendipity\")\nif (!word) exit()\nconst res = http.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`)\nif (!res.ok) { alert(\"Not found\", word); exit() }\nconst entry = res.json()[0]\nprint(`📖 ${entry.word}  ${entry.phonetic || \"\"}`)\nentry.meanings.forEach(m => {\n  print(`\\n${m.partOfSpeech}`)\n  m.definitions.slice(0, 3).forEach((d, i) => print(`  ${i + 1}. ${d.definition}`))\n})\nconst audioURL = (entry.phonetics.find(p => p.audio) || {}).audio\naudioURL ? audio.play(audioURL, { wait: true }) : speak(entry.word)\noutput(entry.meanings[0].definitions[0].definition)",
+    "emoji": "📖"
+  },
+  {
+    "id": "ip-info",
+    "name": "My IP & Network",
+    "category": "Online Tools",
+    "icon": "network",
+    "color": "#5856D6",
+    "description": "Shows your public IP address and where it's located.",
+    "code": "const ip = fetchJSON(\"https://ipapi.co/json/\")\nprint(`🌐 ${ip.ip}`)\nprint(`📍 ${ip.city}, ${ip.region}, ${ip.country_name}`)\nprint(`🏢 ${ip.org}`)\noutput(ip.ip)\nif (confirm(\"Copy IP?\")) clipboard.set(ip.ip)",
+    "emoji": "🌐"
+  },
+  {
+    "id": "joke",
+    "name": "Random Joke",
+    "category": "Online Tools",
+    "icon": "face.smiling.fill",
+    "color": "#FFCC00",
+    "description": "Fetches a random joke and reads the punchline aloud.",
+    "code": "const j = fetchJSON(\"https://official-joke-api.appspot.com/random_joke\")\nprint(j.setup)\nspeak(j.setup)\nsleep(1.5)\nprint(\"👉 \" + j.punchline)\nspeak(j.punchline)\nhaptic(\"success\")",
+    "emoji": "😂"
+  },
+  {
+    "id": "web-tools",
+    "name": "Web Tools Browser",
+    "category": "Online Tools",
+    "icon": "safari.fill",
+    "color": "#30B0C7",
+    "description": "Opens handy web tools inside AMod with a WebView.",
+    "code": "const tools = [\n  [\"Speed test\", \"https://fast.com\"],\n  [\"Regex tester\", \"https://regex101.com\"],\n  [\"JSON formatter\", \"https://jsonformatter.org\"],\n  [\"Base64 converter\", \"https://www.base64-image.de\"],\n  [\"Color picker\", \"https://htmlcolorcodes.com\"],\n]\nconst s = state({ url: tools[0][1] })\n\nui.render(() =>\n  VStack({ spacing: 0 },\n    Picker(\"Tool\", tools.map(t => t[0]), tools.find(t => t[1] === s.url)[0], v => s.url = tools.find(t => t[0] === v)[1]).padding(),\n    WebView(s.url),\n  )\n)",
+    "emoji": "🧰"
+  },
+  {
+    "id": "tip-calc",
+    "name": "Tip Calculator",
+    "category": "Utilities",
+    "icon": "dollarsign.circle.fill",
+    "color": "#34C759",
+    "description": "Split a bill with a slider and stepper.",
+    "code": "const s = state({ bill: \"50\", tip: 18, people: 2 })\nconst total = () => (parseFloat(s.bill) || 0) * (1 + s.tip / 100)\n\nui.render(() =>\n  Form(\n    Section(\"Bill\", TextField(\"Amount\", s.bill, v => s.bill = v)),\n    Section(`Tip: ${Math.round(s.tip)}%`, Slider(s.tip, v => s.tip = v, { min: 0, max: 30, step: 1 })),\n    Section(\"Split\", Stepper(`${s.people} people`, s.people, v => s.people = v, { min: 1, max: 20 })),\n    Section(\"Each pays\",\n      Text(`$${(total() / s.people).toFixed(2)}`).font(44, \"bold\", \"rounded\").foregroundColor(\"green\"),\n      Text(`Total $${total().toFixed(2)}`).foregroundColor(\"secondary\"),\n    ),\n  )\n)",
+    "emoji": "💸"
+  },
+  {
+    "id": "pomodoro",
+    "name": "Focus Timer",
+    "category": "Utilities",
+    "icon": "timer",
+    "color": "#FF3B30",
+    "description": "A 25-minute focus timer with a gauge, sound, and notification.",
+    "code": "const s = state({ minutes: 25, left: 25 * 60, running: false })\nlet t = null\n\nconst tick = () => {\n  s.left--\n  if (s.left <= 0) {\n    clearInterval(t); s.running = false; s.left = s.minutes * 60\n    audio.melody([[\"C5\", .15], [\"E5\", .15], [\"G5\", .3]])\n    notify(\"Time's up!\", \"Take a break ☕️\")\n  }\n}\nconst fmt = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, \"0\")}`\n\nui.render(() =>\n  VStack({ spacing: 24 },\n    ZStack(\n      Gauge(1 - s.left / (s.minutes * 60), { style: \"circular\", color: \"red\" }).scaleEffect(3),\n    ).frame({ height: 200 }),\n    Text(fmt(s.left)).font(56, \"bold\", \"monospaced\"),\n    Stepper(`${s.minutes} minutes`, s.minutes, v => { s.minutes = v; if (!s.running) s.left = v * 60 }, { min: 1, max: 90 }),\n    Button(s.running ? \"Pause\" : \"Start\", () => {\n      s.running = !s.running\n      if (s.running) t = setInterval(tick, 1000); else clearInterval(t)\n    }).buttonStyle(\"borderedProminent\").controlSize(\"large\"),\n  ).padding(24)\n)",
+    "emoji": "🍅"
+  },
+  {
+    "id": "habit",
+    "name": "Habit Tracker",
+    "category": "Utilities",
+    "icon": "checklist",
+    "color": "#AF52DE",
+    "description": "Track daily habits with checkmarks saved between runs.",
+    "code": "const today = new Date().toDateString()\nconst s = state({ habits: storage.get(\"habits\", [\"Drink water\", \"Read 10 pages\", \"Walk\"]), done: storage.get(\"done-\" + today, []), newHabit: \"\" })\nconst save = () => { storage.set(\"habits\", s.habits); storage.set(\"done-\" + today, s.done) }\n\nui.render(() =>\n  List(\n    Section(today,\n      ForEach(s.habits, h =>\n        Toggle(h, s.done.includes(h), on => {\n          s.done = on ? [...s.done, h] : s.done.filter(x => x !== h)\n          haptic(on ? \"success\" : \"light\"); save()\n        }).contextMenu([{ title: \"Delete\", icon: \"trash\", destructive: true, action: () => { s.habits = s.habits.filter(x => x !== h); save() } }])\n      ),\n    ),\n    Section(\"Progress\", Gauge(s.done.length, { max: Math.max(1, s.habits.length), label: `${s.done.length}/${s.habits.length} done`, color: \"purple\" })),\n    Section(\"Add\",\n      HStack(TextField(\"New habit\", s.newHabit, v => s.newHabit = v),\n        Button(Image(\"plus.circle.fill\"), () => { if (s.newHabit) { s.habits = [...s.habits, s.newHabit]; s.newHabit = \"\"; save() } })),\n    ),\n  )\n)",
+    "emoji": "✅"
+  },
+  {
+    "id": "notes-editor",
+    "name": "Notes",
+    "category": "Utilities",
+    "icon": "note.text",
+    "color": "#FFCC00",
+    "description": "A multi-line notes editor that autosaves to a file.",
+    "code": "const s = state({ text: files.read(\"notes.md\") || \"# My notes\\n\" })\n\nui.title(\"Notes\")\nui.render(() =>\n  VStack(\n    TextEditor(s.text, v => { s.text = v; files.write(\"notes.md\", v) }).frame({ maxHeight: Infinity }),\n    HStack(\n      Text(`${s.text.split(/\\s+/).filter(Boolean).length} words`).font(\"caption\").foregroundColor(\"secondary\"),\n      Spacer(),\n      Button(Label(\"Share\", \"square.and.arrow.up\"), () => share(s.text)),\n    ),\n  ).padding()\n)",
+    "emoji": "🗒️"
+  },
+  {
+    "id": "dice",
+    "name": "Dice Roller",
+    "category": "Fun",
+    "icon": "die.face.5.fill",
+    "color": "#FF2D55",
+    "description": "Roll dice with haptics and sound.",
+    "code": "const faces = [\"die.face.1.fill\", \"die.face.2.fill\", \"die.face.3.fill\", \"die.face.4.fill\", \"die.face.5.fill\", \"die.face.6.fill\"]\nconst s = state({ count: 2, rolls: [1, 1] })\n\nui.render(() =>\n  VStack({ spacing: 28 },\n    HStack({ spacing: 16 }, ForEach(s.rolls, r => Image(faces[r - 1]).font(80).foregroundColor(\"red\"))),\n    Text(`Total: ${s.rolls.reduce((a, b) => a + b, 0)}`).font(\"title\", \"bold\"),\n    Stepper(`${s.count} dice`, s.count, v => { s.count = v; s.rolls = Array(v).fill(1) }, { min: 1, max: 4 }),\n    Button(\"Roll 🎲\", () => {\n      s.rolls = s.rolls.map(() => 1 + Math.floor(Math.random() * 6))\n      haptic(\"heavy\"); audio.tone(0, 0.12, { wave: \"noise\", volume: 0.4, wait: false })\n    }).buttonStyle(\"borderedProminent\").controlSize(\"large\"),\n  ).padding()\n)",
+    "emoji": "🎲"
+  },
+  {
+    "id": "tabs-demo",
+    "name": "GUI Showcase",
+    "category": "Fun",
+    "icon": "rectangle.3.group.fill",
+    "color": "#007AFF",
+    "description": "Every GUI feature in one script: tabs, cards, charts, pickers, menus and more.",
+    "code": "const s = state({ name: \"\", color: \"#FF9500\", date: new Date(), level: 0.6, on: true, choice: \"B\" })\n\nui.render(() =>\n  TabView(\n    Tab(\"Controls\", \"slider.horizontal.3\",\n      Form(\n        Section(\"Inputs\",\n          TextField(\"Your name\", s.name, v => s.name = v),\n          Toggle(\"Enabled\", s.on, v => s.on = v),\n          Slider(s.level, v => s.level = v),\n          Picker(\"Choice\", [\"A\", \"B\", \"C\"], s.choice, v => s.choice = v).pickerStyle(\"segmented\"),\n          DatePicker(\"When\", s.date, d => s.date = d),\n          ColorPicker(\"Color\", s.color, c => s.color = c),\n        ),\n        Section(\"Menu & disclosure\",\n          Menu(\"Actions\", Button(\"Vibrate\", () => vibrate()), Button(\"Beep\", () => audio.tone(660, 0.1))),\n          DisclosureGroup(\"More info\", Text(\"Hidden until expanded\")),\n          NavigationLink(\"Open a page\", Text(\"A pushed page!\").font(\"largeTitle\")),\n        ),\n      )\n    ),\n    Tab(\"Visuals\", \"paintpalette.fill\",\n      ScrollView({ spacing: 16 },\n        Card(Text(`Hello ${s.name || \"there\"}`).font(\"title\", \"bold\"), Badge(\"NEW\", s.color)),\n        HStack(Circle().fill(s.color), RoundedRectangle(16).fill(\"blue\"), Capsule().fill(\"green\")).frame({ height: 60 }),\n        LinearGradient([s.color, \"purple\"], \"diagonal\").frame({ height: 100 }).cornerRadius(20),\n        Gauge(s.level, { label: \"Level\", color: s.color }),\n        Chart([{ x: \"Mon\", y: 3 }, { x: \"Tue\", y: 5 }, { x: \"Wed\", y: 2 }, { x: \"Thu\", y: 7 }]),\n        Text(\"Glass card\").padding().glass(),\n        Emoji(\"🚀\", 60).rotationEffect(-20),\n      ).padding()\n    ),\n  )\n)",
+    "emoji": "🎨"
+  },
+  {
+    "id": "settings-hub",
+    "name": "Settings Hub",
+    "category": "System",
+    "icon": "gearshape.2.fill",
+    "color": "#8E8E93",
+    "description": "One-tap shortcuts to Settings pages and device controls.",
+    "code": "const pages = [\n  [\"Wi-Fi\", \"wifi\", \"wifi\"], [\"Bluetooth\", \"bluetooth\", \"antenna.radiowaves.left.and.right\"],\n  [\"Cellular\", \"cellular\", \"cellularbars\"], [\"Hotspot\", \"hotspot\", \"personalhotspot\"],\n  [\"Battery\", \"battery\", \"battery.100\"], [\"Display\", \"display\", \"sun.max.fill\"],\n  [\"Sounds\", \"sounds\", \"speaker.wave.3.fill\"], [\"Focus\", \"focus\", \"moon.fill\"],\n  [\"Privacy\", \"privacy\", \"hand.raised.fill\"], [\"General\", \"general\", \"gearshape.fill\"],\n]\nconst s = state({ b: device.brightness, v: device.volume, torch: flashlight.isOn })\n\nui.render(() =>\n  List(\n    Section(\"Controls\",\n      Toggle(\"Flashlight\", s.torch, on => { s.torch = on; settings.flashlight(on) }),\n      HStack(Image(\"sun.min\"), Slider(s.b, x => { s.b = x; device.brightness = x }), Image(\"sun.max.fill\")),\n      HStack(Image(\"speaker.fill\"), Slider(s.v, x => { s.v = x; device.volume = x }), Image(\"speaker.wave.3.fill\")),\n    ),\n    Section(\"Open Settings\", ForEach(pages, ([t, key, icon]) => Button(Label(t, icon), () => settings.open(key)))),\n  )\n)",
+    "emoji": "⚙️"
+  },
+  {
+    "id": "battery",
+    "name": "Battery Monitor",
+    "category": "System",
+    "icon": "battery.75",
+    "color": "#34C759",
+    "description": "Live battery gauge with low-battery alerts.",
+    "code": "const s = state({ info: device.info() })\nsetInterval(() => {\n  s.info = device.info()\n  if (s.info.battery >= 0 && s.info.battery < 0.2 && !s.info.charging) notify(\"Battery low\", `${Math.round(s.info.battery * 100)}% left`)\n}, 5000)\n\nui.render(() =>\n  VStack({ spacing: 20 },\n    Gauge(Math.max(0, s.info.battery), { style: \"circular\", color: s.info.battery < 0.2 ? \"red\" : \"green\" }).scaleEffect(2.5).frame({ height: 160 }),\n    Text(`${Math.round(s.info.battery * 100)}%`).font(48, \"bold\", \"rounded\"),\n    Label(s.info.charging ? \"Charging\" : \"On battery\", s.info.charging ? \"bolt.fill\" : \"battery.50\"),\n    Label(s.info.lowPowerMode ? \"Low Power Mode on\" : \"Low Power Mode off\", \"leaf.fill\"),\n  ).padding()\n)",
+    "emoji": "🔋"
+  }
+]

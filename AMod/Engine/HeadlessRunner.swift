@@ -36,6 +36,7 @@ private final class HeadlessHost: EngineHost {
         switch kind {
         case .clear: lines.removeAll()
         case .error: lines.append("Error: \(text)")
+        case .image: lines.append("[image]")
         default: lines.append(text)
         }
     }

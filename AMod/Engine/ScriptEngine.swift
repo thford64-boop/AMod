@@ -9,7 +9,7 @@ import CoreLocation
 import EventKit
 
 enum LogKind: String {
-    case out, info, warn, error, system, clear
+    case out, info, warn, error, system, clear, image
 }
 
 /// Whoever is showing a running script: the run screen, or a headless Shortcuts run.
@@ -76,6 +76,7 @@ final class ScriptEngine {
     private let speechWaiter = SpeechWaiter()
     private var locationFetcher: LocationFetcher?
     private lazy var eventStore = EKEventStore()
+    private let audio = AudioPlayer()
 
     init(script: Script, host: EngineHost, input: String = "") {
         self.script = script
@@ -93,6 +94,7 @@ final class ScriptEngine {
         DispatchQueue.main.async { [weak self] in
             self?.pending?.resolve(nil)
             self?.speech.stopSpeaking(at: .immediate)
+            self?.audio.stop()
         }
         queue.async { [weak self] in self?.context = nil }
     }
@@ -345,7 +347,7 @@ final class ScriptEngine {
         // Network
         def(n, "http") { [weak self] a in
             let body: String? = (a.count > 3 && !a[3].isNull && !a[3].isUndefined) ? a[3].toString() : nil
-            return self?.http(a.str(0, "GET"), a.str(1), a.dict(2), body, a.num(4, 30))
+            return self?.http(a.str(0, "GET"), a.str(1), a.dict(2), body, a.num(4, 30), base64: a.bool(5))
         }
 
         // Location
@@ -433,6 +435,46 @@ final class ScriptEngine {
             return (try? self.eventStore.save(reminder, commit: true)) != nil
         }
 
+        // Base64
+        def(n, "b64encode") { a in Data(a.str(0).utf8).base64EncodedString() }
+        def(n, "b64decode") { a in orNull(Self.decodeBase64(a.str(0)).flatMap { String(data: $0, encoding: .utf8) }) }
+        def(n, "fileReadBase64") { [weak self] a in
+            guard let url = self?.fileURL(a.str(0)) else { return NSNull() }
+            return orNull((try? Data(contentsOf: url))?.base64EncodedString())
+        }
+        def(n, "fileWriteBase64") { [weak self] a in
+            guard let url = self?.fileURL(a.str(0)), let data = Self.decodeBase64(a.str(1)) else { return false }
+            try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            return (try? data.write(to: url, options: .atomic)) != nil
+        }
+
+        // Audio
+        def(n, "audioPlay") { [weak self] a in
+            guard let self else { return false }
+            let opts = a.dict(1)
+            guard let data = self.audioData(a.str(0), base64: (opts["base64"] as? Bool) ?? false) else {
+                self.host?.engineLog(.error, "audio: couldn't load \(a.str(0).prefix(60))")
+                return false
+            }
+            return self.playAudio(data, opts)
+        }
+        def(n, "audioTone") { [weak self] a in
+            guard let self else { return false }
+            let opts = a.dict(2)
+            let wav = AudioPlayer.toneWAV(frequency: a.num(0, 440), duration: a.num(1, 0.3),
+                                          volume: (opts["volume"] as? Double) ?? 0.6,
+                                          wave: (opts["wave"] as? String) ?? "sine")
+            var playOpts = opts
+            playOpts["volume"] = 1.0
+            if playOpts["wait"] == nil { playOpts["wait"] = true }
+            return self.playAudio(wav, playOpts)
+        }
+        def(n, "audioStop") { [weak self] _ in self?.onMain { self?.audio.stop() }; return nil }
+        def(n, "audioToneBase64") { a in
+            AudioPlayer.toneWAV(frequency: a.num(0, 440), duration: a.num(1, 0.3), volume: 0.6, wave: a.str(2, "sine"))
+                .base64EncodedString()
+        }
+
         // Other scripts
         def(n, "scriptCode") { [weak self] a in
             let name = a.str(0)
@@ -497,42 +539,107 @@ final class ScriptEngine {
         }
     }
 
+    /// Settings pane ids. iOS has no public API for these, so AMod tries the known URL forms.
     static let settingsPaths: [String: String] = [
-        "": "App-prefs:",
-        "wifi": "App-prefs:WIFI",
-        "bluetooth": "App-prefs:Bluetooth",
-        "cellular": "App-prefs:MOBILE_DATA_SETTINGS_ID",
-        "hotspot": "App-prefs:INTERNET_TETHERING",
-        "vpn": "App-prefs:General&path=VPN",
-        "notifications": "App-prefs:NOTIFICATIONS_ID",
-        "sounds": "App-prefs:Sounds",
-        "focus": "App-prefs:DO_NOT_DISTURB",
-        "screentime": "App-prefs:SCREEN_TIME",
-        "general": "App-prefs:General",
-        "about": "App-prefs:General&path=About",
-        "storage": "App-prefs:General&path=STORAGE_MGMT",
-        "keyboard": "App-prefs:General&path=Keyboard",
-        "display": "App-prefs:DISPLAY",
-        "wallpaper": "App-prefs:Wallpaper",
-        "accessibility": "App-prefs:ACCESSIBILITY",
-        "battery": "App-prefs:BATTERY_USAGE",
-        "privacy": "App-prefs:Privacy",
-        "location": "App-prefs:Privacy&path=LOCATION",
-        "siri": "App-prefs:SIRI",
-        "faceid": "App-prefs:PASSCODE",
-        "safari": "App-prefs:SAFARI",
+        "wifi": "WIFI",
+        "bluetooth": "Bluetooth",
+        "cellular": "MOBILE_DATA_SETTINGS_ID",
+        "hotspot": "INTERNET_TETHERING",
+        "vpn": "General&path=VPN",
+        "notifications": "NOTIFICATIONS_ID",
+        "sounds": "Sounds",
+        "focus": "DO_NOT_DISTURB",
+        "screentime": "SCREEN_TIME",
+        "general": "General",
+        "about": "General&path=About",
+        "storage": "General&path=STORAGE_MGMT",
+        "keyboard": "General&path=Keyboard",
+        "display": "DISPLAY",
+        "wallpaper": "Wallpaper",
+        "accessibility": "ACCESSIBILITY",
+        "battery": "BATTERY_USAGE",
+        "privacy": "Privacy",
+        "location": "Privacy&path=LOCATION",
+        "siri": "SIRI",
+        "faceid": "PASSCODE",
+        "safari": "SAFARI",
+        "airplane": "AIRPLANE_MODE",
+        "controlcenter": "ControlCenter",
+        "appstore": "STORE",
+        "passwords": "PASSWORDS",
     ]
 
+    /// Name of the user's helper shortcut that opens a URL (set in AMod → Settings). Empty = off.
+    static var settingsShortcutName: String {
+        UserDefaults.standard.string(forKey: "amod.settingsShortcut") ?? ""
+    }
+
+    static func settingsURL(for section: String) -> String {
+        let key = section.lowercased().replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
+        return Self.settingsPaths[key].map { "prefs:root=\($0)" } ?? "prefs:root"
+    }
+
     private func openSettings(_ section: String) -> Bool {
-        let key = section.lowercased().replacingOccurrences(of: "-", with: "")
+        let key = section.lowercased().replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
         if key == "app" { return open(UIApplication.openSettingsURLString) }
-        let target = Self.settingsPaths[key] ?? "App-prefs:"
-        if open(target) { return true }
-        return open(UIApplication.openSettingsURLString)
+
+        // Newer iOS versions only honour Settings links opened from the Shortcuts app.
+        let helper = Self.settingsShortcutName
+        if !helper.isEmpty {
+            let name = helper.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            let text = Self.settingsURL(for: key).addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+            return open("shortcuts://run-shortcut?name=\(name)&input=text&text=\(text)")
+        }
+
+        let candidates: [String]
+        if let path = Self.settingsPaths[key] {
+            candidates = ["App-prefs:\(path)", "App-prefs:root=\(path)", "prefs:root=\(path)"]
+        } else {
+            candidates = ["App-prefs:", "prefs:root"]
+        }
+        for candidate in candidates where open(candidate) { return true }
+        host?.engineLog(.warn, "iOS blocked the Settings link. Set up the Settings helper shortcut in AMod → ⚙︎ Settings.")
+        return false
+    }
+
+    // MARK: - Audio
+
+    private func audioData(_ source: String, base64: Bool) -> Data? {
+        if base64 || source.hasPrefix("data:") { return Self.decodeBase64(source) }
+        if source.hasPrefix("http://") || source.hasPrefix("https://") {
+            guard let url = URL(string: source) else { return nil }
+            return blocking(nil as Data?, onMainThread: false) { done in
+                URLSession.shared.dataTask(with: url) { data, _, _ in done(data) }.resume()
+            }
+        }
+        guard let url = fileURL(source) else { return nil }
+        return try? Data(contentsOf: url)
+    }
+
+    private func playAudio(_ data: Data, _ opts: [String: Any]) -> Bool {
+        let volume = Float((opts["volume"] as? Double) ?? 1)
+        let loop = (opts["loop"] as? Bool) ?? false
+        let rate = Float((opts["rate"] as? Double) ?? 1)
+        if (opts["wait"] as? Bool) == true, !loop {
+            return blocking(false) { [audio = self.audio] done in
+                if !audio.play(data, volume: volume, loop: false, rate: rate, onEnd: { done(true) }) { done(false) }
+            }
+        }
+        return onMain { audio.play(data, volume: volume, loop: loop, rate: rate, onEnd: {}) }
+    }
+
+    /// Accepts plain base64 or a data: URL, with or without whitespace.
+    static func decodeBase64(_ string: String) -> Data? {
+        var s = string
+        if s.hasPrefix("data:"), let comma = s.firstIndex(of: ",") { s = String(s[s.index(after: comma)...]) }
+        s = s.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        let pad = s.filter { !$0.isWhitespace }.count % 4
+        if pad > 0 { s += String(repeating: "=", count: 4 - pad) }
+        return Data(base64Encoded: s, options: .ignoreUnknownCharacters)
     }
 
     private func http(_ method: String, _ urlString: String, _ headers: [String: Any],
-                      _ body: String?, _ timeout: Double) -> [String: Any] {
+                      _ body: String?, _ timeout: Double, base64: Bool = false) -> [String: Any] {
         guard let url = URL(string: urlString) else { return ["error": "Invalid URL: \(urlString)"] }
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = method.uppercased()
@@ -546,12 +653,14 @@ final class ScriptEngine {
                 var responseHeaders: [String: String] = [:]
                 for (key, value) in http?.allHeaderFields ?? [:] { responseHeaders["\(key)"] = "\(value)" }
                 let status = http?.statusCode ?? 0
-                done([
+                var result: [String: Any] = [
                     "status": status,
                     "ok": (200..<300).contains(status),
                     "body": String(data: data ?? Data(), encoding: .utf8) ?? "",
                     "headers": responseHeaders,
-                ])
+                ]
+                if base64 { result["base64"] = (data ?? Data()).base64EncodedString() }
+                done(result)
             }.resume()
         }
     }
@@ -673,5 +782,83 @@ final class LocationFetcher: NSObject, CLLocationManagerDelegate {
         let c = completion
         completion = nil
         c?(location)
+    }
+}
+
+/// Plays audio data (any format AVAudioPlayer understands: mp3, m4a, wav, aiff, caf…). Main thread only.
+final class AudioPlayer: NSObject, AVAudioPlayerDelegate {
+    private var player: AVAudioPlayer?
+    private var onEnd: (() -> Void)?
+
+    @discardableResult
+    func play(_ data: Data, volume: Float, loop: Bool, rate: Float, onEnd: @escaping () -> Void) -> Bool {
+        stop()
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, options: [.mixWithOthers])
+        try? session.setActive(true)
+        guard let player = try? AVAudioPlayer(data: data) else { return false }
+        player.delegate = self
+        player.volume = volume
+        player.numberOfLoops = loop ? -1 : 0
+        if rate != 1 {
+            player.enableRate = true
+            player.rate = rate
+        }
+        self.player = player
+        self.onEnd = onEnd
+        guard player.play() else {
+            self.player = nil
+            self.onEnd = nil
+            return false
+        }
+        return true
+    }
+
+    func stop() {
+        player?.stop()
+        player = nil
+        let end = onEnd
+        onEnd = nil
+        end?()
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        guard player === self.player else { return }
+        self.player = nil
+        let end = onEnd
+        onEnd = nil
+        end?()
+    }
+
+    /// A 16-bit mono WAV of a single tone. wave: sine, square, saw, triangle, noise.
+    static func toneWAV(frequency: Double, duration: Double, volume: Double, wave: String) -> Data {
+        let sampleRate = 44_100
+        let count = max(1, Int(Double(sampleRate) * min(max(duration, 0.01), 30)))
+        let fade = 300.0
+        var pcm = Data(capacity: count * 2)
+        for i in 0..<count {
+            let t = Double(i) / Double(sampleRate)
+            let phase = t * frequency
+            let v: Double
+            switch wave {
+            case "square": v = sin(2 * .pi * phase) >= 0 ? 1 : -1
+            case "saw": v = 2 * (phase - (phase + 0.5).rounded(.down))
+            case "triangle": v = 2 * abs(2 * (phase - (phase + 0.5).rounded(.down))) - 1
+            case "noise": v = Double.random(in: -1...1)
+            default: v = sin(2 * .pi * phase)
+            }
+            let envelope = min(1, Double(i) / fade, Double(count - i) / fade)
+            var sample = Int16(max(-1, min(1, v * volume * envelope)) * 32_767).littleEndian
+            withUnsafeBytes(of: &sample) { pcm.append(contentsOf: $0) }
+        }
+        var wav = Data()
+        func u32(_ v: UInt32) { var x = v.littleEndian; withUnsafeBytes(of: &x) { wav.append(contentsOf: $0) } }
+        func u16(_ v: UInt16) { var x = v.littleEndian; withUnsafeBytes(of: &x) { wav.append(contentsOf: $0) } }
+        wav.append(contentsOf: Array("RIFF".utf8)); u32(UInt32(36 + pcm.count))
+        wav.append(contentsOf: Array("WAVEfmt ".utf8)); u32(16); u16(1); u16(1)
+        u32(UInt32(sampleRate)); u32(UInt32(sampleRate * 2)); u16(2); u16(16)
+        wav.append(contentsOf: Array("data".utf8)); u32(UInt32(pcm.count))
+        wav.append(pcm)
+        return wav
     }
 }

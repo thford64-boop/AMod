@@ -9,7 +9,14 @@
 - **Long-press a script → Add to Home Screen** to get a real Home Screen icon that runs it.
 - **Action library:** Shortcuts-style building blocks you can tap to insert, covering device, settings, Shortcuts, scripting, web, files and GUI.
 - **Shortcuts integration:** two actions, *Run AMod Script* (runs in the background and returns output) and *Open AMod Script*.
-- **Links:** `amod://run?name=Flashlight&input=hi`
+- **Links:** `amod://run?name=Flashlight&input=hi`, `amod://import?name=X&code=<base64>`
+- **Sound:** system sounds, audio from URLs, files or **base64**, plus generated tones, notes and melodies.
+- **Images:** show **base64**, file or URL images in GUIs and in the console.
+- **Rich GUI:** tabs, grids, cards, charts, gauges, maps, web views, date and colour pickers, menus, shapes, gradients and context menus.
+- **Custom icons:** give each script an SF Symbol (searchable library), an emoji or a photo.
+- **Templates:** 20 starter scripts in the app (**+ → From Template**) and on the website.
+- **Guide:** [`docs/GUIDE.md`](docs/GUIDE.md), also downloadable inside the app.
+- **Online tools:** a website for converting images and audio to base64, building tones, sharing scripts as links or QR codes, and browsing templates.
 
 ```js
 // CLI
@@ -48,6 +55,12 @@ GitHub Actions builds an unsigned `AMod.ipa` on every push.
 
 The IPA is **unsigned**. Install it with a sideloading tool that signs it for you, such as AltStore, SideStore, Sideloadly or TrollStore, or sign it with your own Apple developer certificate.
 
+## Online tools site
+
+`docs/` is a static website, deployed to GitHub Pages by `.github/workflows/pages.yml`. The first time, enable it under **Settings → Pages → Source: GitHub Actions**. It will then be live at `https://<user>.github.io/AMod/`.
+
+The site and the app share `docs/templates.json` (the template list) and `docs/GUIDE.md` (the guide). Edit those files once and both update.
+
 ## Building locally (macOS)
 
 ```sh
@@ -82,6 +95,7 @@ Apple's sandbox applies to every app, so AMod has the same limits:
 | Flashlight, vibration, haptics, brightness, speech, clipboard, notifications, location, reminders, calendar, HTTP, files | Directly |
 | Volume | Through the system volume slider (`MPVolumeView`) |
 | Wi-Fi, Bluetooth, Airplane Mode, Low Power Mode, Focus, cellular toggles | No public API exists. `settings.open("wifi")` jumps to the Settings page, or `shortcuts.run("name")` runs a shortcut that changes the setting |
+| Opening a specific Settings page | Newer iOS versions can send app links to the app's own page instead. Set up the **Settings helper shortcut** (AMod → ⚙︎ Settings, or Guide §6), because Shortcuts is still allowed to open the exact page |
 | Home Screen icons | A Web Clip configuration profile. Safari downloads it, then you install it in Settings |
 | Running in the background | Use the *Run AMod Script* action in Shortcuts or in automations |
 

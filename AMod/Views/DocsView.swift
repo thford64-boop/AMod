@@ -13,6 +13,10 @@ struct DocsView: View {
                     • **GUI** — calls `ui.render(() => VStack(...))` with SwiftUI-style views.
                     Long-press any script to add it to your Home Screen. Use the ⊞ button in the editor to insert Shortcuts-style actions.
                     """)
+                    if let url = Guide.url {
+                        ShareLink(item: url) { Label("Download the full guide (GUIDE.md)", systemImage: "arrow.down.doc.fill") }
+                    }
+                    Link(destination: AModLinks.site) { Label("Online tools & templates", systemImage: "safari") }
                 }
                 ForEach(DocsContent.sections, id: \.title) { section in
                     Section(section.title) {
@@ -94,6 +98,24 @@ enum DocsContent {
             ("files.read / write / append / list / exists / delete", "Files in AMod's folder (visible in the Files app)."),
             ("storage.get(key, fallback) / set(key, value) / remove(key)", "Save any JSON value between runs."),
         ]),
+        DocSection(title: "Sound", entries: [
+            ("playSound(id)", "Play an iOS system sound by number."),
+            ("audio.play(urlOrFile, {wait, volume, loop, rate})", "Play mp3/m4a/wav/aiff from a URL or AMod's files."),
+            ("audio.playBase64(b64, opts)", "Play audio stored as base64 text or a data: URL."),
+            ("audio.tone(hz, seconds, {wave, volume, wait})", "Generate a tone. wave: sine, square, saw, triangle, noise."),
+            ("audio.note(\"C5\", seconds, opts)", "Play a musical note."),
+            ("audio.melody([[\"C4\", .2], [\"-\", .1], …])", "Play a sequence of notes and rests."),
+            ("audio.toneBase64(hz, seconds, wave)", "Make a WAV file as base64."),
+            ("audio.stop()", "Stop whatever is playing."),
+        ]),
+        DocSection(title: "Images & Base64", entries: [
+            ("showImage(b64 | dataURL | url | file)", "Show an image in the console."),
+            ("Image({ base64 }) / Image({ file }) / Image(\"data:…\")", "Show an image in a GUI."),
+            ("base64.fromURL(url)", "Download anything as base64."),
+            ("base64.encode(text) / base64.decode(b64)", "Text ⇄ base64 (also btoa / atob)."),
+            ("files.readBase64(path) / files.writeBase64(path, b64)", "Binary files."),
+            ("http.get(url, { base64: true }).base64", "Response body as base64."),
+        ]),
         DocSection(title: "GUI: Views", entries: [
             ("ui.render(() => view)", "Show a GUI. The function re-runs after every interaction."),
             ("state({...})", "An object that re-renders the GUI when you change it."),
@@ -112,6 +134,21 @@ enum DocsContent {
             ("ProgressView(value?, total?)", "Progress bar, or a spinner with no value."),
             ("Spacer() / Divider() / Color(\"red\") / Link(label, url)", "Layout helpers."),
             ("ForEach(array, item => view)", "Map an array to views."),
+            ("Grid({ columns: 3 }, ...views)", "A grid."),
+            ("TabView(Tab(title, icon, ...views), …)", "Tabs at the bottom."),
+            ("NavigationLink(label, ...pageViews)", "Push a new page."),
+            ("Card / GroupBox(title, …) / DisclosureGroup(label, …)", "Grouping."),
+            ("Menu(label, ...buttons)", "A pop-up menu."),
+            ("DatePicker(label, date, onChange, {mode})", "Date and/or time picker."),
+            ("ColorPicker(label, hex, onChange)", "Colour picker, returns hex."),
+            ("TextEditor(text, onChange)", "Multi-line text."),
+            ("Chart(data, {type, x, y, series})", "Bar, line, area or point chart."),
+            ("Gauge(value, {min, max, label, style, color})", "Linear or circular gauge."),
+            ("Circle / Rectangle / RoundedRectangle(r) / Capsule", "Shapes — colour with .fill(c)."),
+            ("LinearGradient(colors, direction)", "Gradient view."),
+            ("Map({latitude, longitude, span, pins})", "A map with pins."),
+            ("WebView(url | html)", "A web page inside your GUI."),
+            ("Badge(text, color) / Emoji(\"🔥\", size)", "Small extras."),
         ]),
         DocSection(title: "GUI: Modifiers", entries: [
             (".padding(n?) / .padding(\"horizontal\", n)", "Padding."),
@@ -124,11 +161,16 @@ enum DocsContent {
             (".buttonStyle(\"borderedProminent\"|\"bordered\"|\"plain\")", "Button style."),
             (".textFieldStyle(\"roundedBorder\") .listStyle(\"plain\"|\"insetGrouped\")", "Control styles."),
             (".onTapGesture(fn) .disabled(bool) .lineLimit(n)", "Behaviour."),
+            (".onLongPressGesture(fn) .contextMenu([{title, icon, action}]) .refreshable(fn)", "More interaction."),
+            (".fill(c) .gradient(colors) .glass() .blur(r) .grayscale()", "More looks."),
+            (".badge(n) .hidden() .aspectRatio(r, \"fill\") .zIndex(n) .animation()", "Misc."),
+            (".pickerStyle(\"segmented\") .toggleStyle(\"button\") .controlSize(\"large\")", "Control styles."),
         ]),
         DocSection(title: "Links", entries: [
             ("amod://run?name=Flashlight", "Run a script from anywhere (Safari, Shortcuts, NFC tags…)."),
             ("amod://run?id=<uuid>&input=hello", "Run by id with input (Home Screen icons use this)."),
             ("amod://edit?name=Flashlight", "Open a script in the editor."),
+            ("amod://import?name=X&code=<base64>", "Install a script (used by the online tools site)."),
         ]),
     ]
 }

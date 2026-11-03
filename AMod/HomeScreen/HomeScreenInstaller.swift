@@ -17,11 +17,20 @@ enum HomeScreenInstaller {
             if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) {
                 ctx.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: size, y: size), options: [])
             }
-            let config = UIImage.SymbolConfiguration(pointSize: size * 0.42, weight: .semibold)
-            if let symbol = UIImage(systemName: script.icon, withConfiguration: config)?
-                .withTintColor(.white, renderingMode: .alwaysOriginal) {
-                let s = symbol.size
-                symbol.draw(in: CGRect(x: (size - s.width) / 2, y: (size - s.height) / 2, width: s.width, height: s.height))
+            if let custom = script.iconUIImage {
+                custom.squareIcon(side: size).draw(in: CGRect(x: 0, y: 0, width: size, height: size))
+            } else if let emoji = script.emoji, !emoji.isEmpty {
+                let text = emoji as NSString
+                let attrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: size * 0.55)]
+                let s = text.size(withAttributes: attrs)
+                text.draw(at: CGPoint(x: (size - s.width) / 2, y: (size - s.height) / 2), withAttributes: attrs)
+            } else {
+                let config = UIImage.SymbolConfiguration(pointSize: size * 0.42, weight: .semibold)
+                if let symbol = UIImage(systemName: script.icon, withConfiguration: config)?
+                    .withTintColor(.white, renderingMode: .alwaysOriginal) {
+                    let s = symbol.size
+                    symbol.draw(in: CGRect(x: (size - s.width) / 2, y: (size - s.height) / 2, width: s.width, height: s.height))
+                }
             }
         }
     }

@@ -19,11 +19,7 @@ struct EditorView: View {
             VStack(spacing: 0) {
                 HStack(spacing: 12) {
                     Button { showStyle = true } label: {
-                        Image(systemName: draft.icon)
-                            .font(.title3)
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Color(hex: draft.color), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        ScriptIconTile(script: draft, size: 44)
                     }
                     TextField("Script name", text: $draft.name)
                         .font(.title3.bold())
@@ -64,7 +60,7 @@ struct EditorView: View {
                 }
             }
             .sheet(isPresented: $showStyle) {
-                StylePicker(icon: $draft.icon, color: $draft.color)
+                StylePicker(script: $draft)
             }
             .sheet(isPresented: $showDocs) { DocsView() }
             .fullScreenCover(item: $runSession) { session in
@@ -77,48 +73,5 @@ struct EditorView: View {
     private func save() {
         if draft.name.trimmingCharacters(in: .whitespaces).isEmpty { draft.name = "Untitled" }
         store.upsert(draft)
-    }
-}
-
-struct StylePicker: View {
-    @Binding var icon: String
-    @Binding var color: String
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Color").font(.headline)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 12) {
-                        ForEach(Palette.colors, id: \.self) { hex in
-                            Circle()
-                                .fill(Color(hex: hex))
-                                .frame(width: 40, height: 40)
-                                .overlay(Circle().stroke(Color.primary, lineWidth: color == hex ? 3 : 0).padding(-4))
-                                .onTapGesture { color = hex }
-                        }
-                    }
-                    Text("Icon").font(.headline)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 12) {
-                        ForEach(Palette.icons, id: \.self) { name in
-                            Image(systemName: name)
-                                .font(.title3)
-                                .frame(width: 44, height: 44)
-                                .foregroundColor(icon == name ? .white : .primary)
-                                .background(icon == name ? Color(hex: color) : Color.secondary.opacity(0.12),
-                                            in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                .onTapGesture { icon = name }
-                        }
-                    }
-                }
-                .padding()
-            }
-            .navigationTitle("Icon & Color")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
-        }
     }
 }

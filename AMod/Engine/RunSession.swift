@@ -4,6 +4,7 @@ struct LogLine: Identifiable {
     let id = UUID()
     let kind: LogKind
     let text: String
+    var image: UIImage?
 
     var color: Color {
         switch kind {
@@ -11,7 +12,7 @@ struct LogLine: Identifiable {
         case .info: return .cyan
         case .warn: return .yellow
         case .error: return .red
-        case .system, .clear: return .gray
+        case .system, .clear, .image: return .gray
         }
     }
 }
@@ -90,7 +91,12 @@ final class RunSession: ObservableObject, Identifiable, EngineHost {
                 self.logs.removeAll()
                 return
             }
-            self.logs.append(LogLine(kind: kind, text: text))
+            if kind == .image {
+                let image = ScriptEngine.decodeBase64(text).flatMap { UIImage(data: $0) }
+                self.logs.append(LogLine(kind: .image, text: image == nil ? "[invalid image]" : "", image: image))
+            } else {
+                self.logs.append(LogLine(kind: kind, text: text))
+            }
             if self.logs.count > 5000 { self.logs.removeFirst(self.logs.count - 5000) }
         }
     }

@@ -14,6 +14,10 @@ targets:
     platform: iOS
     sources:
       - path: AMod
+      - path: docs/templates.json
+        buildPhase: resources
+      - path: docs/GUIDE.md
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: AMod
